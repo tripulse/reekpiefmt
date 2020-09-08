@@ -1,8 +1,14 @@
 #![allow(dead_code)]
 
+use std::fs::File;
+use std::f32::consts::PI;
 use std::io::Write;
+use std::io;
 use std::marker::PhantomData;
 use zstd;
+
+mod utils;
+use utils::*;
 
 /** A list of specification legal audio sampling rates to be coded in. */
 const SAMPLERATES: [u32; 8] = [
@@ -15,30 +21,6 @@ const SAMPLERATES: [u32; 8] = [
     96000,
     192000
 ];
-
-trait Sample {
-    fn index() -> u8;
-    fn to_bytes(&self) -> &'static [u8];
-}
-
-macro_rules! sample_impl {
-    ($int_type: ty, $index:expr) => {
-        impl Sample for $int_type {
-            fn index() -> u8 {$index}
-            fn to_bytes(&self) -> &'static [u8] {
-                let b = self.to_be_bytes();
-                unsafe { std::slice::from_raw_parts(b.as_ptr(), b.len()) }
-            }
-        }
-    };
-}
-
-sample_impl!(i8,  0);
-sample_impl!(i16, 1);
-sample_impl!(i32, 2);
-sample_impl!(i64, 3);
-sample_impl!(f32, 4);
-sample_impl!(f64, 5);
 
 struct Encoder<S>(Box<dyn Write>, usize, PhantomData<S>);
 
@@ -73,18 +55,49 @@ impl<S> Encoder<S>
             channels as usize, PhantomData))
     }
 
+    fn encode_flat_unchecked(&mut self, samples: &[S]) -> io::Result<usize> {
+        self.0.write(
+            samples.iter()
+                .flat_map(|s| s.to_bytes().iter().map(|s| *s))
+                .collect::<Vec<u8>>()
+                .as_slice())
+    }
+
+    fn encode(&mut self, samples: &[&[S]]) -> Option<()> {
+        if samples.len() != self.1 {
+            return None;
+        }
+        {
+            let mut channels = samples.iter();
+            
+            // an empty slice, in runtime will never be used.
+            let _empty = &vec![][..];
+            let _first = channels.next().unwrap_or(&_empty);
+
+            channels
+               .try_fold(_first, |a, b|
+                    if a.len() == b.len() { Some(a) }
+                    else { None })?;
+
+            Some(())
+        }?;
+
+        self.encode_flat_unchecked(
+            samples.iter()
+                .flat_map(|b| b.iter().map(|x| *x))
+                .collect::<Vec<S>>()
+                .as_slice()
+        ).ok()?;
+        
+        Some(())
+    }
+
     fn encode_flat(&mut self, samples: &[S]) -> Option<()> {
         if samples.len() % self.1 != 0 {
             return None;
         }
 
-        self.0.write(
-            samples.iter()
-            .flat_map(|s| s.to_bytes().iter().map(|s| *s))
-            .collect::<Vec<u8>>()
-            .as_slice())
-        .ok()?;
-
+        self.encode_flat_unchecked(samples).ok()?;
         Some(())
     }
 }
@@ -102,12 +115,13 @@ fn sine_enc() {
 
     {
         for (i, s) in sine.iter_mut().enumerate() {
-            *s = (2.0 * PI * i as f32/44100.0).sin();
+            *s = (2.0 * PI * 200.0 * i as f32/44100.0).sin();
         }
     }
 
     let mut r = Encoder::<f32>::new(out, 44100, 1, None)
                 .expect("Failed to initialise an RKPI2 instance");
 
-    r.encode_flat(&sine).unwrap();
+    // r.encode_flat_unchecked(&sine).unwrap();
+    r.encode(&vec![&sine[..]]).unwrap();
 }
