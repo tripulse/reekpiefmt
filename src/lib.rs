@@ -7,6 +7,9 @@ use std::io;
 use std::marker::PhantomData;
 use zstd;
 
+use std::ptr;
+use std::slice;
+
 mod utils;
 use utils::*;
 
@@ -69,15 +72,14 @@ impl<S> Encoder<S>
         }
         {
             let mut channels = samples.iter();
-            
-            // an empty slice, in runtime will never be used.
-            let _empty = &vec![][..];
-            let _first = channels.next().unwrap_or(&_empty);
+            let first = channels.next();
 
             channels
-               .try_fold(_first, |a, b|
-                    if a.len() == b.len() { Some(a) }
-                    else { None })?;
+               .try_fold(first.unwrap_or(&unsafe {
+                    slice::from_raw_parts(ptr::null::<S>(), 0)}),
+
+                    |a, b| if a.len() == b.len() { Some(a) }
+                           else { None })?;
 
             Some(())
         }?;
