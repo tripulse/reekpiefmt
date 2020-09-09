@@ -70,23 +70,18 @@ impl<S> Encoder<S>
         if samples.len() != self.1 {
             return None;
         }
-        {
-            let mut channels = samples.iter();
-            let first = channels.next();
 
-            channels
-               .try_fold(first.unwrap_or(&unsafe {
-                    slice::from_raw_parts(ptr::null::<S>(), 0)}),
-
-                    |a, b| if a.len() == b.len() { Some(a) }
-                           else { None })?;
-
-            Some(())
-        }?;
+        let min_samples =
+            match samples.iter()
+                .min_by(|a, b| a.len().cmp(&b.len()))?
+                .len() {
+                    0 => return None,
+                    l => l
+                };
 
         self.encode_flat_unchecked(
             samples.iter()
-                .flat_map(|b| b.iter().map(|x| *x))
+                .flat_map(|b| b[..min_samples].iter().map(|s| *s))
                 .collect::<Vec<S>>()
                 .as_slice()
         ).ok()?;
@@ -121,9 +116,9 @@ fn sine_enc() {
         }
     }
 
-    let mut r = Encoder::<f32>::new(out, 44100, 1, None)
+    let mut r = Encoder::<f32>::new(out, 44100, 2, None)
                 .expect("Failed to initialise an RKPI2 instance");
 
     // r.encode_flat_unchecked(&sine).unwrap();
-    r.encode(&vec![&sine[..]]).unwrap();
+    r.encode(&vec![&sine[..], &sine[..]]).unwrap();
 }
