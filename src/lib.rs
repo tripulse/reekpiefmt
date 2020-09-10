@@ -1,19 +1,13 @@
 #![allow(dead_code)]
 
-use std::fs::File;
-use std::f32::consts::PI;
 use std::io::Write;
 use std::io;
 use std::marker::PhantomData;
 use zstd;
 
-use std::ptr;
-use std::slice;
-
 mod utils;
 use utils::*;
 
-/** A list of specification legal audio sampling rates to be coded in. */
 const SAMPLERATES: [u32; 8] = [
     8000,
     12000,
