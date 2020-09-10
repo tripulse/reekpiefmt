@@ -104,21 +104,3 @@ impl<S> Drop for Encoder<S> {
         self.0.flush().unwrap();
     }
 }
-
-#[test]
-fn sine_enc() {
-    let mut sine = vec![0f32; 44100*4];
-    let out = File::create("hello.r2").unwrap();
-
-    {
-        for (i, s) in sine.iter_mut().enumerate() {
-            *s = (2.0 * PI * 200.0 * i as f32/44100.0).sin();
-        }
-    }
-
-    let mut r = Encoder::<f32>::new(out, 44100, 2, None)
-                .expect("Failed to initialise an RKPI2 instance");
-
-    // r.encode_flat_unchecked(&sine).unwrap();
-    r.encode(&vec![&sine[..], &sine[..]]).unwrap();
-}
