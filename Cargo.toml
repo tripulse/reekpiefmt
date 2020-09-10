@@ -1,10 +1,11 @@
 [package]
-name = "rkpi2"
+name    = "rkpi2"
 version = "0.1.0"
 authors = ["tripulse <bsantanu381@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-zstd="0.5.3+zstd.1.4.5"
+zstd="0.5.3"
+
+[dev-dependencies]
+periodicsynth="0.1.6"
