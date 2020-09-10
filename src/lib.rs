@@ -92,13 +92,17 @@ impl<S> Encoder<S>
                     l => l
                 };
 
-        self.encode_flat_unchecked(
-            samples.iter()
-                .flat_map(|b| b[..min_samples].iter().map(|s| *s))
-                .collect::<Vec<S>>()
-                .as_slice()
-        ).ok()?;
-        
+        let mut sample_buf = Vec::with_capacity(min_samples * samples.len());
+
+        unsafe {
+            for s in 0..min_samples {
+                for b in 0..self.num_channels {
+                    sample_buf.push(samples[b][s]);
+                }
+            }
+
+            self.encode_flat_unchecked(&sample_buf)
+        }.ok()?;
         Some(())
     }
 
@@ -107,7 +111,6 @@ impl<S> Encoder<S>
             return None;
         }
 
-        self.encode_flat_unchecked(samples).ok()?;
         unsafe {
             self.encode_flat_unchecked(samples)
         }.ok()?;
