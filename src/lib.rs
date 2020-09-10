@@ -34,6 +34,7 @@ impl<S> Encoder<S>
     where S: Sample
 {
     fn new<W: Write + 'static>(
+    pub fn new<W: Write + 'static>(
         mut output: W,
         samplerate: u32,
         channels: u8,
@@ -81,6 +82,7 @@ impl<S> Encoder<S>
 
     fn encode(&mut self, samples: &[&[S]]) -> Option<()> {
         if samples.len() != self.1 {
+    pub fn encode(&mut self, samples: &[&[S]]) -> Option<()> {
             return None;
         }
 
@@ -104,6 +106,7 @@ impl<S> Encoder<S>
 
     fn encode_flat(&mut self, samples: &[S]) -> Option<()> {
         if samples.len() % self.1 != 0 {
+    pub fn encode_flat(&mut self, samples: &[S]) -> Option<()> {
             return None;
         }
 
