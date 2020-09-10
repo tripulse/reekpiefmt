@@ -19,7 +19,14 @@ const SAMPLERATES: [u32; 8] = [
     192000
 ];
 
-struct Encoder<S>(Box<dyn Write>, usize, PhantomData<S>);
+pub struct Encoder<S> {
+    out: Box<dyn Write>,
+
+    num_channels: usize,
+    sample_buf: *mut u8,
+
+    _0: PhantomData<S>
+}
 
 impl<S> Encoder<S>
     where S: Sample
@@ -44,12 +51,17 @@ impl<S> Encoder<S>
             channels-1,                          // number of channels.
         ]).ok()?;
 
-        Some(Self(
-            match compression {
+        Some(Self {
+            out: match compression {
                 Some(l) => Box::new(zstd::Encoder::new(output, l).ok()?),
                 None    => Box::new(output)
             },
-            channels as usize, PhantomData))
+
+            num_channels: channels as usize,
+            sample_buf: vec![0; S::_SIZE].as_mut_ptr(),
+            
+            _0: PhantomData
+        })
     }
 
     fn encode_flat_unchecked(&mut self, samples: &[S]) -> io::Result<usize> {
