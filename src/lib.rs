@@ -33,7 +33,6 @@ pub struct Encoder<S> {
 impl<S> Encoder<S>
     where S: Sample
 {
-    fn new<W: Write + 'static>(
     pub fn new<W: Write + 'static>(
         mut output: W,
         samplerate: u32,
@@ -80,9 +79,8 @@ impl<S> Encoder<S>
                 .as_slice())
     }
 
-    fn encode(&mut self, samples: &[&[S]]) -> Option<()> {
-        if samples.len() != self.1 {
     pub fn encode(&mut self, samples: &[&[S]]) -> Option<()> {
+        if samples.len() != self.num_channels {
             return None;
         }
 
@@ -104,9 +102,8 @@ impl<S> Encoder<S>
         Some(())
     }
 
-    fn encode_flat(&mut self, samples: &[S]) -> Option<()> {
-        if samples.len() % self.1 != 0 {
     pub fn encode_flat(&mut self, samples: &[S]) -> Option<()> {
+        if samples.len() % self.num_channels != 0 {
             return None;
         }
 
@@ -120,6 +117,6 @@ impl<S> Encoder<S>
 
 impl<S> Drop for Encoder<S> {
     fn drop(&mut self) {
-        self.0.flush().unwrap();
+        self.out.flush().unwrap();
     }
 }
