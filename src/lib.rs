@@ -45,7 +45,7 @@ impl<S> Encoder<S>
         output.write(&[
             244 |                                // identifier.
             (compression.is_some() as u8) << 1 | // if compression applied.
-            S::INDEX >> 2,                      // sampleformat index.
+            S::INDEX >> 2,                       // sampleformat index.
             (S::INDEX & 3) << 6 |
             (SAMPLERATES                         // samplerate index.
                 .iter()

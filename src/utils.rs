@@ -12,7 +12,7 @@ macro_rules! sample_impl {
             const INDEX: u8 = $index;
 
             unsafe fn to_bytes(&self, out: *mut u8) {
-                std::ptr::copy(self.to_be_bytes().as_ptr(), out, Self::SIZE);
+                std::ptr::copy(self.to_be_bytes().as_ptr(), out, Self::_SIZE);
             }
         }
     };
