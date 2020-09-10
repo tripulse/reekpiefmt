@@ -1,15 +1,18 @@
 pub trait Sample: Copy {
-    fn to_bytes(&self) -> &'static [u8];
+    const _SIZE: usize;
     const INDEX: u8;
+
+    unsafe fn to_bytes(&self, out: *mut u8);
 }
 
 macro_rules! sample_impl {
     ($int_type: ty, $index:expr) => {
         impl Sample for $int_type {
-            fn to_bytes(&self) -> &'static [u8] {
-                let b = self.to_be_bytes();
-                unsafe { std::slice::from_raw_parts(b.as_ptr(), b.len()) }
+            const _SIZE: usize = std::mem::size_of::<$int_type>();
             const INDEX: u8 = $index;
+
+            unsafe fn to_bytes(&self, out: *mut u8) {
+                std::ptr::copy(self.to_be_bytes().as_ptr(), out, Self::SIZE);
             }
         }
     };

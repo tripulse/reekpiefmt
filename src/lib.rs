@@ -8,6 +8,8 @@ use zstd;
 mod utils;
 use utils::*;
 
+#[cfg(test)] mod tests;
+
 const SAMPLERATES: [u32; 8] = [
     8000,
     12000,
@@ -64,10 +66,15 @@ impl<S> Encoder<S>
         })
     }
 
-    fn encode_flat_unchecked(&mut self, samples: &[S]) -> io::Result<usize> {
-        self.0.write(
+    unsafe fn encode_flat_unchecked(&mut self, samples: &[S]) -> io::Result<usize> {
+        self.out.write(
             samples.iter()
-                .flat_map(|s| s.to_bytes().iter().map(|s| *s))
+                .flat_map(|s| {
+                    s.to_bytes(self.sample_buf);
+
+                    (0..S::_SIZE)
+                        .map(|i| *self.sample_buf.add(i))
+                })
                 .collect::<Vec<u8>>()
                 .as_slice())
     }
@@ -101,6 +108,9 @@ impl<S> Encoder<S>
         }
 
         self.encode_flat_unchecked(samples).ok()?;
+        unsafe {
+            self.encode_flat_unchecked(samples)
+        }.ok()?;
         Some(())
     }
 }
