@@ -2,7 +2,7 @@
 
 use std::io::{Read, Write};
 use std::io;
-use std::marker::PhantomData;
+use std::convert::TryInto;
 use zstd;
 
 mod utils;
@@ -145,7 +145,9 @@ struct Decoder {
     input: Box<dyn Read>,
     sample_fmt: SampleFormat,
     sample_rate: u32,
-    num_channels: u8
+    num_channels: u8,
+
+    block_size: usize  // size of each sample block.
 }
 
 impl Decoder {
@@ -159,22 +161,66 @@ impl Decoder {
             return None;
         }
 
+        let sample_fmt = unsafe {
+            std::mem::transmute::<_, _>(
+                (hdr[0] & 1) << 2 | hdr[1] >> 6
+        )};
+
+
         Some(Decoder {
             input: match (hdr[0] & 3) >> 1 {
                 0 => Box::new(input),
                 1 => Box::new(zstd::Decoder::new(input).ok()?),
                 _ => return None  // rust is forcing here ;P
             },
-            sample_fmt: unsafe {
-                std::mem::transmute::<_, _>
-                ((hdr[0] & 1) << 2 | hdr[1] >> 6)
-            },
+            sample_fmt,
             sample_rate: SAMPLERATES[(hdr[1] >> 3 & 7) as usize],
-            num_channels: (hdr[1] & 7) + 1
+            num_channels: (hdr[1] & 7) + 1,
+
+            block_size: match sample_fmt {
+                SampleFormat::Int8    => 1,
+                SampleFormat::Int16   => 2,
+                SampleFormat::Int32   => 4,
+                SampleFormat::Int64   => 8,
+                SampleFormat::Float32 => 4,
+                SampleFormat::Float64 => 8
+            }
         })
     }
 
     fn sample_format(&self) -> SampleFormat { self.sample_fmt   }
     fn sample_rate(&self)   -> u32          { self.sample_rate  }
     fn num_channels(&self)  -> u8           { self.num_channels }
+
+    fn decode_flat(&mut self, n: usize) -> Option<DynamicSampleBuf> {
+        let mut buf = vec![0u8; n * self.block_size];
+        let bufsiz = self.input.read(&mut buf).ok()?;
+        
+        // misaligned buffer is entirely discarded, in future
+        // in future it will be cropped to its largest possible
+        // aligned size.
+        if bufsiz % self.block_size != 0 {
+            return None;
+        }
+
+        buf.truncate(bufsiz);  // truncate this, to prevent invalid reads.
+
+        macro_rules! parse_nums {
+            ($num: ty) => {
+                buf
+                .chunks(self.block_size)
+                .map(|x| <$num>::from_be_bytes(x.try_into().unwrap()))
+                .collect::<Vec<$num>>()
+            };
+        }
+
+        Some(match self.sample_fmt {
+            SampleFormat::Int8    => DynamicSampleBuf::Int8   (parse_nums!(i8)),
+            SampleFormat::Int16   => DynamicSampleBuf::Int16  (parse_nums!(i16)),
+            SampleFormat::Int32   => DynamicSampleBuf::Int32  (parse_nums!(i32)),
+            SampleFormat::Int64   => DynamicSampleBuf::Int64  (parse_nums!(i64)),
+            SampleFormat::Float32 => DynamicSampleBuf::Float32(parse_nums!(f32)),
+            SampleFormat::Float64 => DynamicSampleBuf::Float64(parse_nums!(f64))
+        })
+    }
 }
