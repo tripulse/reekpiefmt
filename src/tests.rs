@@ -22,3 +22,14 @@ fn sine_enc() {
         &synth(sin, &mut 600f64, 22050)[..]   // R: 600hZ
     ][..]).unwrap();
 }
+
+#[test]
+fn sine_dec() {
+    let r = Decoder::new(
+        File::open("sample.r2").unwrap()
+    ).unwrap();
+
+    assert_eq!(r.sample_rate(), 44100);
+    assert_eq!(r.num_channels(), 2);
+    assert_eq!(r.sample_format(), SampleFormat::Float64);
+}
