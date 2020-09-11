@@ -26,9 +26,7 @@ pub struct Encoder<S> {
 
     num_channels: usize,
     byte_sample_buf: Vec<u8>,
-    flat_sample_buf: Vec<S>,
-
-    _0: PhantomData<S>
+    flat_sample_buf: Vec<S>
 }
 
 impl<S> Encoder<S>
@@ -63,9 +61,7 @@ impl<S> Encoder<S>
             num_channels: channels as usize,
 
             byte_sample_buf: vec![],
-            flat_sample_buf: vec![],
-            
-            _0: PhantomData
+            flat_sample_buf: vec![]
         })
     }
 
