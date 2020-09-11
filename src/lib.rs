@@ -145,7 +145,7 @@ struct Decoder {
     input: Box<dyn Read>,
     sample_fmt: SampleFormat,
     sample_rate: u32,
-    num_channels: u8,
+    num_channels: usize,
 
     block_size: usize  // size of each sample block.
 }
@@ -175,7 +175,7 @@ impl Decoder {
             },
             sample_fmt,
             sample_rate: SAMPLERATES[(hdr[1] >> 3 & 7) as usize],
-            num_channels: (hdr[1] & 7) + 1,
+            num_channels: ((hdr[1] & 7) + 1) as usize,
 
             block_size: match sample_fmt {
                 SampleFormat::Int8    => 1,
@@ -188,18 +188,19 @@ impl Decoder {
         })
     }
 
-    fn sample_format(&self) -> SampleFormat { self.sample_fmt   }
-    fn sample_rate(&self)   -> u32          { self.sample_rate  }
-    fn num_channels(&self)  -> u8           { self.num_channels }
+    fn sample_format(&self) -> SampleFormat { self.sample_fmt         }
+    fn sample_rate(&self)   -> u32          { self.sample_rate        }
+    fn num_channels(&self)  -> u8           { self.num_channels as u8 }
 
     fn decode_flat(&mut self, n: usize) -> Option<DynamicSampleBuf> {
-        let mut buf = vec![0u8; n * self.block_size];
+        let mut buf = vec![0u8; n * self.block_size * self.num_channels];
         let bufsiz = self.input.read(&mut buf).ok()?;
         
         // misaligned buffer is entirely discarded, in future
         // in future it will be cropped to its largest possible
         // aligned size.
-        if bufsiz % self.block_size != 0 {
+        if bufsiz % self.block_size                      != 0 ||
+          (bufsiz / self.block_size) % self.num_channels != 0 {
             return None;
         }
 
