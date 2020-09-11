@@ -25,7 +25,8 @@ pub struct Encoder<S> {
     out: Box<dyn Write>,
 
     num_channels: usize,
-    sample_buf: *mut u8,
+    byte_sample_buf: Vec<u8>,
+    flat_sample_buf: Vec<S>,
 
     _0: PhantomData<S>
 }
@@ -60,23 +61,23 @@ impl<S> Encoder<S>
             },
 
             num_channels: channels as usize,
-            sample_buf: vec![0; S::_SIZE].as_mut_ptr(),
+
+            byte_sample_buf: vec![],
+            flat_sample_buf: vec![],
             
             _0: PhantomData
         })
     }
 
-    unsafe fn encode_flat_unchecked(&mut self, samples: &[S]) -> io::Result<usize> {
-        self.out.write(
-            samples.iter()
-                .flat_map(|s| {
-                    s.to_bytes(self.sample_buf);
+    unsafe fn encode_flat_unchecked(&mut self) -> io::Result<usize> {
+        self.byte_sample_buf.resize(self.flat_sample_buf.len() * S::_SIZE, 0);
 
-                    (0..S::_SIZE)
-                        .map(|i| *self.sample_buf.add(i))
-                })
-                .collect::<Vec<u8>>()
-                .as_slice())
+        for (i, s) in self.flat_sample_buf.iter().enumerate() {
+            let bi = i * S::_SIZE;  // byte index in byte_sample_buf.
+            s.to_bytes(&mut self.byte_sample_buf[bi..bi+S::_SIZE]);
+        }
+
+        self.out.write(&self.byte_sample_buf)
     }
 
     pub fn encode(&mut self, samples: &[&[S]]) -> Option<()> {
@@ -92,17 +93,16 @@ impl<S> Encoder<S>
                     l => l
                 };
 
-        let mut sample_buf = Vec::with_capacity(min_samples * samples.len());
-
-        unsafe {
-            for s in 0..min_samples {
-                for b in 0..self.num_channels {
-                    sample_buf.push(samples[b][s]);
-                }
+        // fill by the first channel's first element, since Sample isn't constructible.
+        self.flat_sample_buf.resize(min_samples * samples.len(), samples[0][0]);
+        
+        for s in 0..min_samples {
+            for c in 0..self.num_channels {
+                self.flat_sample_buf[s*self.num_channels + c] = samples[c][s];  
             }
+        }
 
-            self.encode_flat_unchecked(&sample_buf)
-        }.ok()?;
+        unsafe { self.encode_flat_unchecked() }.ok()?;
         Some(())
     }
 
@@ -112,7 +112,8 @@ impl<S> Encoder<S>
         }
 
         unsafe {
-            self.encode_flat_unchecked(samples)
+            self.flat_sample_buf.copy_from_slice(samples);
+            self.encode_flat_unchecked()
         }.ok()?;
         Some(())
     }
