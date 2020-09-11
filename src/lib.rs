@@ -130,6 +130,31 @@ struct Decoder {
     block_size: usize  // size of each sample block.
 }
 
+
+fn parse_samples(
+    byte_samples: &[u8],
+    fmt: SampleFormat) -> DynamicSampleBuf
+{
+    macro_rules! parse_nums {
+        ($num: ty) => {
+            byte_samples
+            .chunks(std::mem::size_of::<$num>())
+            .map(|x| <$num>::from_be_bytes(x.try_into().unwrap()))
+            .collect::<Vec<$num>>()
+        };
+    }
+
+    match fmt {
+        SampleFormat::Int8    => DynamicSampleBuf::Int8   (parse_nums!(i8)),
+        SampleFormat::Int16   => DynamicSampleBuf::Int16  (parse_nums!(i16)),
+        SampleFormat::Int32   => DynamicSampleBuf::Int32  (parse_nums!(i32)),
+        SampleFormat::Int64   => DynamicSampleBuf::Int64  (parse_nums!(i64)),
+        SampleFormat::Float32 => DynamicSampleBuf::Float32(parse_nums!(f32)),
+        SampleFormat::Float64 => DynamicSampleBuf::Float64(parse_nums!(f64))
+    }
+}
+
+
 impl Decoder {
     fn new<R>(mut input: R) -> Option<Self> 
         where R: Read + 'static
@@ -186,22 +211,7 @@ impl Decoder {
 
         buf.truncate(bufsiz);  // truncate this, to prevent invalid reads.
 
-        macro_rules! parse_nums {
-            ($num: ty) => {
-                buf
-                .chunks(self.block_size)
-                .map(|x| <$num>::from_be_bytes(x.try_into().unwrap()))
-                .collect::<Vec<$num>>()
-            };
         }
 
-        Some(match self.sample_fmt {
-            SampleFormat::Int8    => DynamicSampleBuf::Int8   (parse_nums!(i8)),
-            SampleFormat::Int16   => DynamicSampleBuf::Int16  (parse_nums!(i16)),
-            SampleFormat::Int32   => DynamicSampleBuf::Int32  (parse_nums!(i32)),
-            SampleFormat::Int64   => DynamicSampleBuf::Int64  (parse_nums!(i64)),
-            SampleFormat::Float32 => DynamicSampleBuf::Float32(parse_nums!(f32)),
-            SampleFormat::Float64 => DynamicSampleBuf::Float64(parse_nums!(f64))
-        })
     }
 }
