@@ -2,7 +2,7 @@ pub trait Sample: Copy {
     const _SIZE: usize;
     const INDEX: u8;
 
-    unsafe fn to_bytes(&self, out: *mut u8);
+    unsafe fn to_bytes(&self, out: &mut [u8]) -> Option<()>;
 }
 
 macro_rules! sample_impl {
@@ -11,8 +11,13 @@ macro_rules! sample_impl {
             const _SIZE: usize = std::mem::size_of::<$int_type>();
             const INDEX: u8 = $index;
 
-            unsafe fn to_bytes(&self, out: *mut u8) {
-                std::ptr::copy(self.to_be_bytes().as_ptr(), out, Self::_SIZE);
+            unsafe fn to_bytes(&self, out: &mut [u8]) -> Option<()> {
+                if(out.len() == Self::_SIZE) {
+                    std::ptr::copy(self.to_be_bytes().as_ptr(),
+                                   out.as_mut_ptr(),
+                                   Self::_SIZE);
+                    Some(())
+                } else { None }
             }
         }
     };
