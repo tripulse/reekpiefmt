@@ -121,26 +121,6 @@ impl<S> Drop for Encoder<S> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-enum DynamicSampleBuf {
-    Int8   (Vec<i8>),
-    Int16  (Vec<i16>),
-    Int32  (Vec<i32>),
-    Int64  (Vec<i64>),
-    Float32(Vec<f32>),
-    Float64(Vec<f64>)
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum SampleFormat {
-    Int8    = 0,
-    Int16   = 1,
-    Int32   = 2,
-    Int64   = 3,
-    Float32 = 4,
-    Float64 = 5
-}
-
 struct Decoder {
     input: Box<dyn Read>,
     sample_fmt: SampleFormat,

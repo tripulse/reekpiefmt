@@ -29,3 +29,23 @@ sample_impl!(i32, 2);
 sample_impl!(i64, 3);
 sample_impl!(f32, 4);
 sample_impl!(f64, 5);
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DynamicSampleBuf {
+    Int8   (Vec<i8>),
+    Int16  (Vec<i16>),
+    Int32  (Vec<i32>),
+    Int64  (Vec<i64>),
+    Float32(Vec<f32>),
+    Float64(Vec<f64>)
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum SampleFormat {
+    Int8    = 0,
+    Int16   = 1,
+    Int32   = 2,
+    Int64   = 3,
+    Float32 = 4,
+    Float64 = 5
+}
