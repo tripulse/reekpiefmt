@@ -39,3 +39,18 @@ fn sine_dec() {
         println!("{:#?}", b);
     }
 }
+
+#[test]
+fn sine_dec_once() {
+    let mut r = Decoder::new(
+        File::open("sample.r2").unwrap()
+    ).unwrap();
+
+    assert_eq!(r.sample_rate(), 44100);
+    assert_eq!(r.num_channels(), 2);
+    assert_eq!(r.sample_format(), SampleFormat::Float64);
+
+    if let DynamicSampleBuf::Float64(b) = r.decode_flat_full().unwrap() {
+        // println!("{:#?}", b);
+    }
+}

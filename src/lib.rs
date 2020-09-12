@@ -210,7 +210,12 @@ impl Decoder {
         Some(parse_samples(&buf, self.sample_fmt))
     }
 
-        }
+    pub fn decode_flat_full(&mut self) -> Option<DynamicSampleBuf> {
+        let mut buf = Vec::<u8>::new();
 
+        self.input.read_to_end(&mut buf).ok()?;
+        buf.truncate(self.block_size * (buf.len() / self.block_size));
+
+        Some(parse_samples(&buf, self.sample_fmt))
     }
 }
