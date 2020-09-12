@@ -196,20 +196,14 @@ impl Decoder {
     fn sample_format(&self) -> SampleFormat { self.sample_fmt         }
     fn sample_rate(&self)   -> u32          { self.sample_rate        }
     fn num_channels(&self)  -> u8           { self.num_channels as u8 }
+    pub fn decode_flat(&mut self, num: usize) -> Option<DynamicSampleBuf> {
+        let mut buf = vec![0u8; num * self.block_size];
 
-    fn decode_flat(&mut self, n: usize) -> Option<DynamicSampleBuf> {
-        let mut buf = vec![0u8; n * self.block_size * self.num_channels];
         let bufsiz = self.input.read(&mut buf).ok()?;
-        
-        // misaligned buffer is entirely discarded, in future
-        // in future it will be cropped to its largest possible
-        // aligned size.
-        if bufsiz % self.block_size                      != 0 ||
-          (bufsiz / self.block_size) % self.num_channels != 0 {
-            return None;
-        }
+        buf.truncate(self.block_size * (bufsiz / self.block_size));
 
-        buf.truncate(bufsiz);  // truncate this, to prevent invalid reads.
+        Some(parse_samples(&buf, self.sample_fmt))
+    }
 
         }
 
