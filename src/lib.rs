@@ -39,7 +39,9 @@ impl<S> Encoder<S>
         compression: Option<i32>
     ) -> Option<Self>
     {
-        if channels < 1 || channels > 8 { return None; }
+        if channels < 1 || channels > 8 {
+            return None;
+        }
        
         output.write(&[
             244 |                                // identifier.
@@ -121,7 +123,7 @@ impl<S> Drop for Encoder<S> {
     }
 }
 
-struct Decoder {
+pub struct Decoder {
     input: Box<dyn Read>,
     sample_fmt: SampleFormat,
     sample_rate: u32,
@@ -156,8 +158,9 @@ fn parse_samples(
 
 
 impl Decoder {
-    fn new<R>(mut input: R) -> Option<Self> 
-        where R: Read + 'static
+    pub fn new<R>(mut input: R) -> Option<Self> 
+    where 
+        R: Read + 'static
     {
         let mut hdr = [0u8; 2];
         input.read_exact(&mut hdr[..]).ok()?;
@@ -170,6 +173,7 @@ impl Decoder {
             std::mem::transmute::<_, _>(
                 (hdr[0] & 1) << 2 | hdr[1] >> 6
         )};
+        let num_channels = ((hdr[1] & 7) + 1) as usize;
 
 
         Some(Decoder {
@@ -179,8 +183,8 @@ impl Decoder {
                 _ => return None  // rust is forcing here ;P
             },
             sample_fmt,
+            num_channels,
             sample_rate: SAMPLERATES[(hdr[1] >> 3 & 7) as usize],
-            num_channels: ((hdr[1] & 7) + 1) as usize,
 
             block_size: match sample_fmt {
                 SampleFormat::Int8    => 1,
@@ -189,13 +193,14 @@ impl Decoder {
                 SampleFormat::Int64   => 8,
                 SampleFormat::Float32 => 4,
                 SampleFormat::Float64 => 8
-            }
+            } * num_channels
         })
     }
 
-    fn sample_format(&self) -> SampleFormat { self.sample_fmt         }
-    fn sample_rate(&self)   -> u32          { self.sample_rate        }
-    fn num_channels(&self)  -> u8           { self.num_channels as u8 }
+    pub fn sample_format(&self) -> SampleFormat { self.sample_fmt         }
+    pub fn sample_rate(&self)   -> u32          { self.sample_rate        }
+    pub fn num_channels(&self)  -> u8           { self.num_channels as u8 }
+
     pub fn decode_flat(&mut self, num: usize) -> Option<DynamicSampleBuf> {
         let mut buf = vec![0u8; num * self.block_size];
 
